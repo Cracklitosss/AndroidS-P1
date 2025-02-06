@@ -10,34 +10,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import com.example.myapplication.data.api.RetrofitClient
-import com.example.myapplication.data.model.Product
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.example.myapplication.data.model.Product
+import com.example.myapplication.ui.products.ProductsViewModel
+import com.example.myapplication.ui.products.ProductsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsScreen(
+    viewModel: ProductsViewModel,
     onAddClick: () -> Unit,
     onEditClick: (Product) -> Unit,
-    onDeleteClick: (Product) -> Unit,
-    refreshTrigger: Int = 0
+    onDeleteClick: (Product) -> Unit
 ) {
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    LaunchedEffect(refreshTrigger) {
-        try {
-            val response = RetrofitClient.apiService.getProducts()
-            if (response.isSuccessful) {
-                products = response.body() ?: emptyList()
-            }
-        } finally {
-            isLoading = false
-        }
-    }
+    val productsState by viewModel.productsState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -54,27 +43,36 @@ fun ProductsScreen(
             )
         }
     ) { padding ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+        when (val state = productsState) {
+            is ProductsState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(products) { product ->
-                    ProductItem(
-                        product = product,
-                        onEditClick = { onEditClick(product) },
-                        onDeleteClick = { 
-                            onDeleteClick(product)
-                        }
-                    )
+            is ProductsState.Success -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    items(state.products) { product ->
+                        ProductItem(
+                            product = product,
+                            onEditClick = onEditClick,
+                            onDeleteClick = onDeleteClick
+                        )
+                    }
+                }
+            }
+            is ProductsState.Error -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = state.message)
                 }
             }
         }
@@ -84,8 +82,8 @@ fun ProductsScreen(
 @Composable
 fun ProductItem(
     product: Product,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onEditClick: (Product) -> Unit,
+    onDeleteClick: (Product) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -118,10 +116,10 @@ fun ProductItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = onEditClick) {
+                TextButton(onClick = { onEditClick(product) }) {
                     Text("Editar")
                 }
-                TextButton(onClick = onDeleteClick) {
+                TextButton(onClick = { onDeleteClick(product) }) {
                     Text("Eliminar")
                 }
             }
