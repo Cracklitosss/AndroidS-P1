@@ -8,14 +8,15 @@ import java.io.File
 class ComposeFileProvider : FileProvider() {
     companion object {
         fun getImageUri(context: Context): Uri {
-            val directory = File(context.cacheDir, "images")
-            directory.mkdirs()
+            val directory = File(context.cacheDir, "images").apply {
+                mkdirs()
+            }
             val file = File.createTempFile(
-                "selected_image_",
+                "camera_photo_",
                 ".jpg",
                 directory
             )
-            val authority = context.packageName + ".fileprovider"
+            val authority = "${context.packageName}.fileprovider"
             return getUriForFile(
                 context,
                 authority,

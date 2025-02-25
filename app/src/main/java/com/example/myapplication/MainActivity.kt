@@ -1,10 +1,15 @@
 package com.example.myapplication
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +20,7 @@ import com.example.myapplication.ui.auth.AuthState
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.products.ProductsViewModel
 import com.example.myapplication.ui.products.dialog.ProductDialog
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -31,6 +37,23 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Solicitar permisos de notificaciones en Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotificationPermission()
+        }
+        
+        // Obtener token de FCM
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                Log.d("FCM_TOKEN", "Token: $token")
+                // Opcional: Mostrar el token en un Toast para pruebas
+                Toast.makeText(this, "FCM Token: $token", Toast.LENGTH_LONG).show()
+            } else {
+                Log.e("FCM_TOKEN", "Error al obtener token", task.exception)
+            }
+        }
         
         // Observar estados de autenticación
         lifecycleScope.launch {
@@ -128,5 +151,13 @@ class MainActivity : ComponentActivity() {
 
     private fun handleDeleteProduct(product: Product) {
         productsViewModel.deleteProduct(product.id)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun requestNotificationPermission() {
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+        if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(permission), 100)
+        }
     }
 }

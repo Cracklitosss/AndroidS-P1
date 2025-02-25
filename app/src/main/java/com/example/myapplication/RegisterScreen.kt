@@ -40,7 +40,9 @@ fun RegisterScreen(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success: Boolean ->
             if (success) {
-               
+                photoUri?.let { uri ->
+                    photoUri = uri
+                }
             }
         }
     )
