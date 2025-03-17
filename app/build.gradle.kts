@@ -84,6 +84,12 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.1"))
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // LeakCanary
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.12")
+
+    // SharedPreferences Encriptadas
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
 
 kotlin {

@@ -3,6 +3,8 @@ package com.example.myapplication.ui.auth
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.local.SecurePreferences
+import com.example.myapplication.data.model.LoginResponse
 import com.example.myapplication.domain.usecase.auth.LoginUseCase
 import com.example.myapplication.domain.usecase.auth.RegisterUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,20 +16,39 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val registerUseCase: RegisterUseCase
+    private val registerUseCase: RegisterUseCase,
+    private val securePreferences: SecurePreferences
 ) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
     val authState: StateFlow<AuthState> = _authState
 
-    fun login(email: String, password: String) {
+    init {
+        // Verificar si hay credenciales guardadas y remember me está activado
+        if (securePreferences.getRememberMe()) {
+            val email = securePreferences.getSavedEmail()
+            val password = securePreferences.getSavedPassword()
+            if (!email.isNullOrEmpty() && !password.isNullOrEmpty()) {
+                login(email, password, true)
+            }
+        }
+    }
+
+    fun login(email: String, password: String, isAutoLogin: Boolean = false) {
         viewModelScope.launch {
-            _authState.value = AuthState.Loading
+            if (!isAutoLogin) {
+                _authState.value = AuthState.Loading
+            }
+            
             loginUseCase(email, password).fold(
-                onSuccess = { response ->
-                    _authState.value = if (response.success) {
-                        AuthState.Success(response.message)
+                onSuccess = { loginResponse ->
+                    if (loginResponse.success) {
+                        // Guardar token y datos de usuario
+                        loginResponse.token?.let { securePreferences.saveAuthToken(it) }
+                        securePreferences.saveUserEmail(email)
+                        
+                        _authState.value = AuthState.Success(loginResponse.message)
                     } else {
-                        AuthState.Error("Error en el login")
+                        _authState.value = AuthState.Error(loginResponse.message)
                     }
                 },
                 onFailure = {
@@ -41,11 +62,15 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             registerUseCase(email, password, photoUri).fold(
-                onSuccess = { response ->
-                    _authState.value = if (response.success) {
-                        AuthState.Success(response.message)
+                onSuccess = { registerResponse ->
+                    if (registerResponse.success) {
+                        // Guardar token y datos de usuario
+                        registerResponse.token?.let { securePreferences.saveAuthToken(it) }
+                        securePreferences.saveUserEmail(email)
+                        
+                        _authState.value = AuthState.Success(registerResponse.message)
                     } else {
-                        AuthState.Error("Error en el registro")
+                        _authState.value = AuthState.Error(registerResponse.message)
                     }
                 },
                 onFailure = {
@@ -53,6 +78,25 @@ class AuthViewModel @Inject constructor(
                 }
             )
         }
+    }
+    
+    fun saveRememberMe(remember: Boolean, email: String, password: String) {
+        securePreferences.saveRememberMe(remember)
+        if (remember) {
+            securePreferences.saveCredentials(email, password)
+        } else {
+            // Si desmarca remember me, limpiamos las credenciales guardadas
+            securePreferences.saveCredentials("", "")
+        }
+    }
+    
+    fun logout() {
+        securePreferences.clearAuthToken()
+        _authState.value = AuthState.Initial
+    }
+    
+    fun isLoggedIn(): Boolean {
+        return securePreferences.getAuthToken() != null
     }
 }
 

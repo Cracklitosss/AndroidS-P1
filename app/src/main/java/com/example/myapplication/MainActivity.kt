@@ -38,6 +38,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Verificar si hay un usuario con sesión iniciada
+        isLoggedIn = authViewModel.isLoggedIn()
+        
         // Solicitar permisos de notificaciones en Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestNotificationPermission()
@@ -47,11 +50,26 @@ class MainActivity : ComponentActivity() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
+                // Usar diferentes tags y niveles de log para asegurar que se vea
                 Log.d("FCM_TOKEN", "Token: $token")
+                Log.i("FCM_TOKEN", "Token: $token")
+                Log.e("FCM_TOKEN", "Token: $token")
+                Log.w("FCM_TOKEN", "Token: $token")
+                
+                // Usar tags alternativos
+                Log.d("FIREBASE", "FCM Token: $token")
+                Log.d("MyApplication", "FCM Token: $token")
+                
+                // Imprimir en la consola estándar también
+                println("FCM TOKEN: $token")
+                System.out.println("FCM TOKEN: $token")
+                
                 // Opcional: Mostrar el token en un Toast para pruebas
                 Toast.makeText(this, "FCM Token: $token", Toast.LENGTH_LONG).show()
             } else {
                 Log.e("FCM_TOKEN", "Error al obtener token", task.exception)
+                Log.e("FIREBASE", "Error al obtener token FCM", task.exception)
+                Log.e("MyApplication", "Error al obtener token FCM", task.exception)
             }
         }
         
@@ -84,6 +102,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onDeleteClick = { product: Product ->
                                 handleDeleteProduct(product)
+                            },
+                            onLogoutClick = {
+                                handleLogout()
                             }
                         )
 
@@ -136,10 +157,10 @@ class MainActivity : ComponentActivity() {
                     }
                     else -> {
                         LoginScreen(
-                            onLoginClick = { email, password ->
-                                authViewModel.login(email, password)
+                            onLoginSuccess = {
+                                isLoggedIn = true
                             },
-                            onRegisterClick = {
+                            onNavigateToRegister = {
                                 isRegistering = true
                             }
                         )
@@ -151,6 +172,12 @@ class MainActivity : ComponentActivity() {
 
     private fun handleDeleteProduct(product: Product) {
         productsViewModel.deleteProduct(product.id)
+    }
+    
+    private fun handleLogout() {
+        authViewModel.logout()
+        isLoggedIn = false
+        Toast.makeText(this, "Sesión cerrada", Toast.LENGTH_SHORT).show()
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)

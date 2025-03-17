@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +25,8 @@ fun ProductsScreen(
     viewModel: ProductsViewModel,
     onAddClick: () -> Unit,
     onEditClick: (Product) -> Unit,
-    onDeleteClick: (Product) -> Unit
+    onDeleteClick: (Product) -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     val productsState by viewModel.productsState.collectAsState()
 
@@ -37,6 +39,12 @@ fun ProductsScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Agregar producto"
+                        )
+                    }
+                    IconButton(onClick = onLogoutClick) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Cerrar sesión"
                         )
                     }
                 }

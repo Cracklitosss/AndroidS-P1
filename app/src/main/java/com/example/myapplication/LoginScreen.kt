@@ -1,11 +1,12 @@
 package com.example.myapplication
 
-
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
@@ -18,135 +19,133 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.myapplication.ui.auth.AuthState
+import com.example.myapplication.ui.auth.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLoginClick: (String, String) -> Unit,
-    onRegisterClick: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
+    
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-
+    var rememberMe by remember { mutableStateOf(false) }
+    
+    // Cargar credenciales guardadas si existen
+    LaunchedEffect(Unit) {
+        if (authState is AuthState.Success) {
+            onLoginSuccess()
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Imagen circular
-        Image(
-            painter = painterResource(id = R.drawable.img),
-            contentDescription = "Logo",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(120.dp)
-                .clip(CircleShape)
-                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         Text(
-            text = "Bienvenido",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            text = "Iniciar Sesión",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 32.dp)
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Inicia sesión para continuar crack",
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Campo de email
+        
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo electrónico") },
-            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+                .padding(bottom = 16.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Campo de contraseña
+        
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
-            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = MaterialTheme.shapes.medium,
+                .padding(bottom = 16.dp),
             visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Botón de login
-       Button(
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = rememberMe,
+                onCheckedChange = { rememberMe = it }
+            )
+            Text("Recordarme")
+        }
+        
+        Button(
             onClick = {
-                if (email.isEmpty() || password.isEmpty()) {
-                    errorMessage = "Por favor rellena todos los campos"
-                } else {
-                    errorMessage = ""
-                    onLoginClick(email, password)
-                }
+                viewModel.login(email, password)
+                viewModel.saveRememberMe(rememberMe, email, password)
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(50.dp),
-            shape = MaterialTheme.shapes.medium
+                .height(50.dp)
         ) {
-            Text(
-                text = "Iniciar Sesión",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (authState is AuthState.Loading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Text("Iniciar Sesión")
+            }
         }
-
+        
         Spacer(modifier = Modifier.height(16.dp))
-
+        
         TextButton(
-            onClick = onRegisterClick,
-            modifier = Modifier.fillMaxWidth()
+            onClick = onNavigateToRegister
         ) {
+            Text("¿No tienes cuenta? Regístrate")
+        }
+        
+        if (authState is AuthState.Error) {
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "¿No tienes cuenta? Regístrate aquí",
-                color = MaterialTheme.colorScheme.primary
+                text = (authState as AuthState.Error).message,
+                color = MaterialTheme.colorScheme.error
             )
         }
-
-        if (errorMessage.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
-        }
+        
+        // Usuario de prueba
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            text = "Usuario de prueba:",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = "Email: test@test.com",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = "Password: test123",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    LoginScreen(onLoginClick = { _, _ -> }, onRegisterClick = {})
+    LoginScreen(onLoginSuccess = {}, onNavigateToRegister = {})
 }
 
